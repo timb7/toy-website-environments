@@ -9,12 +9,17 @@ on:
       resourceGroupName:
         required: true
         type: string
+      reviewApiUrl:
+        required: true
+        type: string
     secrets:
       AZURE_CLIENT_ID:
         required: true
       AZURE_TENANT_ID:
         required: true
       AZURE_SUBSCRIPTION_ID:
+        required: true
+      reviewApiKey:
         required: true
 
 permissions:
@@ -23,35 +28,39 @@ permissions:
 
 jobs:
   validate:
-     runs-on: ubuntu-latest
-     steps: 
-     - uses: actions/checkout@v2
-     - uses: azure/login@v1
-       name: Sign in to Azure
-       with:
+    runs-on: ubuntu-latest
+    steps: 
+    - uses: actions/checkout@v2
+    - uses: azure/login@v1
+      name: Sign in to Azure
+      with:
         client-id: ${{ secrets.AZURE_CLIENT_ID }}
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-     - if: inputs.environmentType != 'Production'
-       uses: azure/arm-deploy@v1
-       name: Run preflight validation
-       with:
-         deploymentName: ${{ github.run_number }}
-         resourceGroupName: ${{ inputs.resourceGroupName }}
-         template: ./deploy/main.bicep
-         parameters: >
-           environmentType=${{ inputs.environmentType }}
-         deploymentMode: Validate
-     - if: inputs.environmentType == 'Production'
-       uses: azure/arm-deploy@v1
-       name: Run what-if
-       with:
-         failOnStdErr: false
-         resourceGroupName: ${{ inputs.resourceGroupName }}
-         template: ./deploy/main.bicep
-         parameters: >
-           environmentType=${{ inputs.environmentType }}
-         additionalArguments: --what-if
+    - if: inputs.environmentType != 'Production'
+      uses: azure/arm-deploy@v1
+      name: Run preflight validation
+      with:
+        deploymentName: ${{ github.run_number }}
+        resourceGroupName: ${{ inputs.resourceGroupName }}
+        template: ./deploy/main.bicep
+        parameters: >
+          environmentType=${{ inputs.environmentType }}
+          reviewApiUrl=${{ inputs.reviewApiUrl }}
+          reviewApiKey=${{ secrets.reviewApiKey }}
+        deploymentMode: Validate
+    - if: inputs.environmentType == 'Production'
+      uses: azure/arm-deploy@v1
+      name: Run what-if
+      with:
+        failOnStdErr: false
+        resourceGroupName: ${{ inputs.resourceGroupName }}
+        template: ./deploy/main.bicep
+        parameters: >
+          environmentType=${{ inputs.environmentType }}
+          reviewApiUrl=${{ inputs.reviewApiUrl }}
+          reviewApiKey=${{ secrets.reviewApiKey }}
+        additionalArguments: --what-if
 
   deploy:
     needs: validate
@@ -77,6 +86,8 @@ jobs:
         template: ./deploy/main.bicep
         parameters: >
           environmentType=${{ inputs.environmentType }}
+          reviewApiUrl=${{ inputs.reviewApiUrl }}
+          reviewApiKey=${{ secrets.reviewApiKey }}
 
   smoke-test:
     runs-on: ubuntu-latest

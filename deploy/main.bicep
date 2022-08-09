@@ -12,6 +12,13 @@ param environmentType string
 @maxLength(13)
 param resourceNameSuffix string = uniqueString(resourceGroup().id)
 
+@description('The URL to the product review API.')
+param reviewApiUrl string
+
+@secure()
+@description('The API key to use when accessing the product review API.')
+param reviewApiKey string
+
 // Define the names for resources.
 var appServiceAppName = 'toy-website-${resourceNameSuffix}'
 var appServicePlanName = 'toy-website'
@@ -53,6 +60,17 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2021-01-15' = {
   sku: environmentConfigurationMap[environmentType].appServicePlan.sku
 }
 
+resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: applicationInsightsName
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    Request_Source: 'rest'
+    Flow_Type: 'Bluefield'
+  }
+}
+
 resource appServiceApp 'Microsoft.Web/sites@2021-01-15' = {
   name: appServiceAppName
   location: location
@@ -69,19 +87,16 @@ resource appServiceApp 'Microsoft.Web/sites@2021-01-15' = {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: applicationInsights.properties.ConnectionString
         }
+        {
+          name: 'ReviewApiUrl'
+          value: reviewApiUrl
+        }
+        {
+          name: 'ReviewApiKey'
+          value: reviewApiKey
+        }
       ]
     }
-  }
-}
-
-resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
-  name: applicationInsightsName
-  location: location
-  kind: 'web'
-  properties: {
-    Application_Type: 'web'
-    Request_Source: 'rest'
-    Flow_Type: 'Bluefield'
   }
 }
 
